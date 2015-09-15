@@ -1,0 +1,54 @@
+#pragma once
+
+#include <errno.h>
+#include <netinet/in.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#include <vector>
+#include <sstream>
+#include <map>
+#include <string>
+
+using namespace std;
+
+class Server {
+public:
+    Server();
+    ~Server();
+
+    void run();
+    
+protected:
+    virtual void create();
+    virtual void close_socket();
+    void serve();
+    void handle(int);
+    string get_request(int);
+    bool send_response(int, string);
+    vector<string> split(string, char);
+    bool isNumber(string);
+    bool containsNewline(string);
+    vector<string> half(string);
+    
+    int server_;
+    int buflen_;
+    char* buf_;
+    map<string, vector<string> > messageMap;
+};
+
+class Message {
+
+ private:
+
+  
+  string command;
+  string fileName;
+  int length;
+  bool needed;
+  
+  
+}
