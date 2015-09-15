@@ -43,6 +43,7 @@ Server::serve() {
 void
 Server::handle(int client) {
     // loop to handle all requests
+
     while (1) {
         // get a request
         string request = get_request(client);
@@ -51,38 +52,76 @@ Server::handle(int client) {
             break;
         // send response
 	bool success = false;
+	bool needed = false;
 	int byteNum;
+	string cache;
 
-	if(containsNewline(request)) {
-	  
-	  vector<string> halves = half(request);
+	Message *message = parse_request(request);
 
-	  vector<string> elements = split(halves[0], ' ');
-
-	  if(elements[0] == "store" && elements.size() == 3) {
-	    
-	    if(isNumber(elements[2])) {
-	      
-	      byteNum = atoi(elements[2].c_str());
-
-	      Message *message = new Message(elements[0], elements[1], byteNum,
-					    halves[1], false);
-
-	      storeMessage(message);
-	      
-	      success = send_response(client, "Stored a file called " + elements[1] + " with " +
-				      elements[2] + " bytes\n");
-	    }
-	  }
-	}
-
-        //client input invalid command
-        if (not success)
+	if(message->command == "") {
 	  send_response(client, "Invalid input\n");
+	  continue;
+	}
+	
+	//cache = message->value;
+	
+	if(message->needed)
+	  get_value(client,message);
+
+	storeMessage(message);
+
+	stringstream ss;
+	ss << message->length;
+
+	success = send_response(client, "Stored a file called " + message->fileName + " with " +
+				ss.str() + " bytes\n");
+        //client input invalid command
+	// if (not success)
+	//    send_response(client, "Invalid input\n");
     }
     close(client);
 }
 
+void Server::get_value(int client, Message* message) {
+
+  // send_response(client, "\n");
+  int left = message->length - message->value.length();
+
+
+  while(left > 0) {
+    
+    send_response(client, "\n");
+    int nread = recv(client,buf_,1024,0);
+    
+      left -= nread;
+
+      // stringstream ss;
+      // ss << left;
+      //  send_response(client, ss.str() + "\n");
+  
+    if (nread < 0) {
+      if (errno == EINTR)
+	// the socket call was interrupted -- try again
+	continue;
+      else
+	// an error occurred, so break out
+	break;
+    } else if (nread == 0) {
+      // the socket is closed
+      break;
+    }
+
+    if(left < nread) {
+      message->value.append(buf_,nread);
+      break;
+    }
+    else if(left > nread) {
+      message->value.append(buf_,left);
+
+    }
+  }
+}
+    
 string
 Server::get_request(int client) {
     string request = "";
@@ -135,6 +174,43 @@ Server::send_response(int client, string response) {
     return true;
 }
 
+Message* Server::parse_request(string request) {
+
+  bool needed;
+  int byteNum;
+  string dum = "dum";
+  Message *dummy = new Message();
+  if(containsNewline(request)) {
+	  
+    vector<string> halves = half(request);
+    
+    vector<string> elements = split(halves[0], ' ');
+    
+    if(elements[0] == "store" && elements.size() == 3) {
+      
+      if(isNumber(elements[2])) {
+	      
+	byteNum = atoi(elements[2].c_str());
+
+	if(byteNum > request.length())
+	  needed = true;
+	if(byteNum < request.length())
+	  needed = false;
+	
+	Message *message = new Message(elements[0], elements[1], byteNum,
+	  			       halves[1], needed);
+
+	return message;
+
+      }
+      return dummy;
+    }
+    return dummy;
+  }
+  return dummy;
+}
+
+
 vector<string> Server::split(string s, char delim) {
   stringstream ss(s);
   string item;
@@ -169,6 +245,23 @@ vector<string> Server::half(string str) {
       }
     }
   }
+  return halves;
+}
+
+vector<string> Server::splitCache(string cache, int byteNum) {
+
+
+  string first = "";
+  string second = cache;
+  vector<string> halves;
+  
+  for(size_t i = 0; i < byteNum; i++) {
+
+    first+=cache[i];
+    second.erase(0,1);
+  }
+  halves.push_back(first);
+  halves.push_back(second);
   return halves;
 }
 

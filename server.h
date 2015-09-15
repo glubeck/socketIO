@@ -27,6 +27,14 @@ using namespace std;
      this->value = value;
      this->needed = needed;
    }
+   Message() {
+
+     this->command = "";
+     this->fileName = "";
+     this->length = 0;
+     this->value = "";
+     this->needed = false;
+   }
    //~Message();
    
    string command; 
@@ -90,6 +98,9 @@ protected:
     bool isNumber(string);
     bool containsNewline(string);
     vector<string> half(string);
+    vector<string> splitCache(string, int);
+    Message* parse_request(string);
+    void get_value(int, Message*);
     
     int server_;
     int buflen_;
