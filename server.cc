@@ -55,31 +55,23 @@ Server::handle(int client) {
 
 	if(containsNewline(request)) {
 	  
-	  send_response(client, "contains new Line\n");
-	  
 	  vector<string> halves = half(request);
 
-	  if(halves.size() == 2) {
-	    send_response(client, halves.front() + '\n');
-	    send_response(client, halves.back() + '\n');
-	  }
+	  vector<string> elements = split(halves[0], ' ');
 
-	  
-
-	  vector<string> elements = split(halves.front(), ' ');
-
-
-	  if(elements.front() == "store" && elements.size() == 3) {
+	  if(elements[0] == "store" && elements.size() == 3) {
 	    
-	    send_response(client, elements.front() + '\n');
-	    send_response(client, elements.back() + '\n');
-	    
-	    if(isNumber(elements.back())) {
-	      send_response(client, "third argument is number\n");
-	      byteNum = atoi(elements.back().c_str());
-	      success = send_response(client, elements.back() + '\n');
-
+	    if(isNumber(elements[2])) {
 	      
+	      byteNum = atoi(elements[2].c_str());
+
+	      Message *message = new Message(elements[0], elements[1], byteNum,
+					    halves[1], false);
+
+	      storeMessage(message);
+	      
+	      success = send_response(client, "Stored a file called " + elements[1] + " with " +
+				      elements[2] + " bytes\n");
 	    }
 	  }
 	}
