@@ -1,4 +1,7 @@
+#include <iostream>
 #include "server.h"
+
+using namespace std;
 
 Server::Server() {
     // setup variables
@@ -54,30 +57,56 @@ Server::handle(int client) {
 	bool success = false;
 	bool needed = false;
 	int byteNum;
-	string cache;
+	string cache = request;
+	Message *message;
 
-	Message *message = parse_request(request);
+        
 
-	if(message->command == "") {
-	  send_response(client, "Invalid input\n");
-	  continue;
-	}
+
+	  cout << cache.length() << endl;
+	   cout << cache << endl;
+	  
+	  message = parse_request(cache);
+	  
 	
-	//cache = message->value;
+	  // std::cout << message->firstLine << endl;
+	  // std::cout << message->command << endl;
+	  // std::cout << message->fileName << endl;
+	  // std::cout << message->length << endl;
+	  // std::cout << message->value << endl;
+	  // std::cout << message->needed << endl;
+	  
 	
-	if(message->needed)
-	  get_value(client,message);
+	  if(!message->needed && cache.length() > 0){
+	
+	    cache.erase(0, message->length);
+	    //cout << cache << endl;
+	    
+	    message->value.erase(message->length, message->value.length()-1);
+	    //cout << message->value << endl;
 
-	storeMessage(message);
+	    storeMessage(message);
 
-	stringstream ss;
-	ss << message->length;
+	    stringstream ss;
+	    ss << message->value.length();
+	    cout << "Stored a file called " + message->fileName
+	      + " with " + ss.str() + " bytes\n" << endl;
+		
+	    //std::cout << message->value << endl;
+	  }
 
-	success = send_response(client, "Stored a file called " + message->fileName + " with " +
-				ss.str() + " bytes\n");
-        //client input invalid command
-	// if (not success)
-	//    send_response(client, "Invalid input\n");
+
+	  
+	
+	//	if(message->needed)
+	//  get_value(client,message);
+
+	
+
+	
+
+
+
     }
     close(client);
 }
@@ -174,14 +203,16 @@ Server::send_response(int client, string response) {
     return true;
 }
 
+
+
 Message* Server::parse_request(string request) {
 
   bool needed;
   int byteNum;
-  string dum = "dum";
   Message *dummy = new Message();
+  string text = "";
   if(containsNewline(request)) {
-	  
+    
     vector<string> halves = half(request);
     
     vector<string> elements = split(halves[0], ' ');
@@ -189,17 +220,19 @@ Message* Server::parse_request(string request) {
     if(elements[0] == "store" && elements.size() == 3) {
       
       if(isNumber(elements[2])) {
-	      
+	
 	byteNum = atoi(elements[2].c_str());
 
-	if(byteNum > request.length())
+	if(byteNum > request.length()) {
 	  needed = true;
-	if(byteNum < request.length())
+	}
+	if(byteNum <= request.length()) {
 	  needed = false;
+	}
 	
-	Message *message = new Message(elements[0], elements[1], byteNum,
+	Message *message = new Message(halves[0], elements[0], elements[1], byteNum,
 	  			       halves[1], needed);
-
+	std::cout << "message parsed successfuly" << endl;
 	return message;
 
       }
@@ -226,27 +259,21 @@ vector<string> Server::half(string str) {
   string second = str;
   vector<string> halves;
   for (size_t i = 0; i < str.length(); i++) {
-    if(str[i] != '\\') {
+    if(str[i] != '\n') {
       first += str[i];
       second.erase(0,1);
     }
-    if(str[i] == '\\') {
-      i++;
-      if(str[i] == 'n') {
-	halves.push_back(first);
-	second.erase(0,2);
-	halves.push_back(second);
-	break;
-      }
-      else {
-	first += '\\';
-	first += str[i];
-	second.erase(0,2);
-      }
+    if(str[i] == '\n') {
+      halves.push_back(first);
+      second.erase(0,1);
+      halves.push_back(second);
+      break;
     }
   }
   return halves;
 }
+
+
 
 vector<string> Server::splitCache(string cache, int byteNum) {
 
@@ -277,11 +304,8 @@ bool Server::isNumber(string str) {
 bool Server::containsNewline(string str) {
 
   for (size_t i = 0; i < str.length(); i++) {
-    if (str[i] == '\\') {
-      i++;
-      if(str[i] == 'n') {
-	return true;
-      }
+    if (str[i] == '\n') {
+      return true;
     }
   }
   return false;

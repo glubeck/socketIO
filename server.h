@@ -15,20 +15,22 @@
 
 using namespace std;
 
-     class Message {
+class Message {
 
  public:
-   Message(string& command, string& fileName, int& length, string& value,
-	   bool needed) {
-
-     this->command = command;
-     this->fileName = fileName;
-     this->length = length;
-     this->value = value;
-     this->needed = needed;
-   }
+  Message(string& firstLine, string& command, string& fileName,
+	  int& length, string& value, bool needed) {
+    
+    this->firstLine = firstLine;
+    this->command = command;
+    this->fileName = fileName;
+    this->length = length;
+    this->value = value;
+    this->needed = needed;
+  }
    Message() {
 
+     this->firstLine = "";
      this->command = "";
      this->fileName = "";
      this->length = 0;
@@ -36,7 +38,8 @@ using namespace std;
      this->needed = false;
    }
    //~Message();
-   
+
+   string firstLine;
    string command; 
    string fileName; 
    int length;
