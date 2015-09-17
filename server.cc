@@ -48,80 +48,64 @@ Server::handle(int client) {
     // loop to handle all requests
   string request = get_request(client);
   string cache = request;
-  string cache2;
-  int i = 8;
-    while (i != 0) {
-      i--;
-      //cout << "another iteration" << endl;
-        // get a request
 
+  while (1) {
+    
+    if (request.empty())
+      break;
 
+    bool needed = false;
 
-      
-      //  string request = get_request(client);
-      // break if client is done or an error occurred
-      if (request.empty())
-	break;
-      // send response
-      bool success = false;
-      bool needed = false;
-      int byteNum;
-      Message *message;
-
-        
-	//cout << cache.length() << endl;
-	//cout << cache << endl;
+    //Parse the Request
+    Message *message = parse_request(cache);
 	  
-	message = parse_request(cache);
-	  
-	if(message->needed) {
-	  cache = get_value(client, message->length, cache);
-	  //cout << cache << endl;
-	  message->value = cache;
-	}
+    //if more bytes are needed, get more bytes from the buffer
+    if(message->needed) {
 
-	
-	  
-	//cout << "trying to store" << endl;
-	message->value.erase(message->length, message->value.length()-1);
-	//cout << message->value << endl;
+      cache = get_value(client, message->length, cache);
 
-	if(message->length > 0)
-	  cache.erase(0, message->value.length()+message->firstLine.length()+1);
-	else
-	  cache.erase(0, 1+message->firstLine.length());
-	    //cout << cache << endl;
+      //assign the cache to the message to be used later
+      message->value = cache;
 
-	storeMessage(message);
-
-	stringstream ss;
-	ss << message->value.length();
-	cout << "Stored a file called " + message->fileName
-	  + " with " + ss.str() + " bytes" << endl;
-	
-	// std::cout << message->value << "\n" << endl;
-	  
-	  
     }
-    close(client);
+
+    //erase the cache from the message
+    if(message->length == 0)
+      message->value.erase(message->length, message->value.length());
+    else
+      message->value.erase(message->length, message->value.length()-1);
+    
+    //erase the message from the cache
+    if(message->length > 0)
+      cache.erase(0, message->value.length()+message->firstLine.length()+1);
+    else
+      cache.erase(0, 1+message->firstLine.length());
+    
+    //store the message
+    storeMessage(message);
+    
+    //print out the responsee
+    stringstream ss;
+    ss << message->value.length();
+    cout << "Stored a file called " + message->fileName
+      + " with " + ss.str() + " bytes" << endl;
+    
+    
+  }
+  close(client);
 }
 
 string Server::get_value(int client, int messageLength, string cache) {
 
-  // send_response(client, "\n");
   int left = messageLength - cache.length();  
   string cache2 = cache;
 
   while(left > 0) {
-    //cout << left << endl;
+
     int nread = recv(client,buf_,1024,0);
     
     left -= nread;
 
-    // stringstream ss;
-    // ss << left;
-    //  send_response(client, ss.str() + "\n");
-  
     if (nread < 0) {
       if (errno == EINTR)
 	// the socket call was interrupted -- try again
@@ -200,25 +184,23 @@ Message* Server::parse_request(string request) {
   Message *dummy = new Message();
   string text = "";
   if(containsNewline(request)) {
-    //cout << "contains new line" << endl;
 
-
+    //split the message from the cache
     vector<string> halves = half(request);
-
-    //cout << halves[0] << endl;
-    
+   
+    //split the message into three parts
     vector<string> elements = split(halves[0], ' ');
     
-
+    //if syntax is valid
     if(elements[0] == "store" && elements.size() == 3) {
       
-      //cout << "tyring to store " << elements[1] << endl;
+      //if third argument is number
       if(isNumber(elements[2])) {
 	
+	//convert to int
 	byteNum = atoi(elements[2].c_str());
-	//cout << "this has " << byteNum << " bytes" << endl;
-
-
+	
+	//determine whether or not more bytes are needed
 	if(byteNum > request.length()) {
 	  needed = true;
 	}
@@ -226,12 +208,14 @@ Message* Server::parse_request(string request) {
 	  needed = false;
 	}
 	
+	//store in message variable
 	Message *message = new Message(halves[0], elements[0], elements[1], byteNum,
 	  			       halves[1], needed);
 	
 	return message;
 
       }
+      //if anything goes wrong, return a dummy message with bogus input
       return dummy;
     }
     return dummy;
