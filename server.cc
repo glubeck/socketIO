@@ -46,87 +46,81 @@ Server::serve() {
 void
 Server::handle(int client) {
     // loop to handle all requests
-
-    while (1) {
+  string request = get_request(client);
+  string cache = request;
+  string cache2;
+  int i = 8;
+    while (i != 0) {
+      i--;
+      //cout << "another iteration" << endl;
         // get a request
-        string request = get_request(client);
-        // break if client is done or an error occurred
-        if (request.empty())
-            break;
-        // send response
-	bool success = false;
-	bool needed = false;
-	int byteNum;
-	string cache = request;
-	Message *message;
+
+
+
+      
+      //  string request = get_request(client);
+      // break if client is done or an error occurred
+      if (request.empty())
+	break;
+      // send response
+      bool success = false;
+      bool needed = false;
+      int byteNum;
+      Message *message;
 
         
+	//cout << cache.length() << endl;
+	//cout << cache << endl;
+	  
+	message = parse_request(cache);
+	  
+	if(message->needed) {
+	  cache = get_value(client, message->length, cache);
+	  //cout << cache << endl;
+	  message->value = cache;
+	}
 
+	
+	  
+	//cout << "trying to store" << endl;
+	message->value.erase(message->length, message->value.length()-1);
+	//cout << message->value << endl;
 
-	  cout << cache.length() << endl;
-	   cout << cache << endl;
-	  
-	  message = parse_request(cache);
-	  
-	
-	  // std::cout << message->firstLine << endl;
-	  // std::cout << message->command << endl;
-	  // std::cout << message->fileName << endl;
-	  // std::cout << message->length << endl;
-	  // std::cout << message->value << endl;
-	  // std::cout << message->needed << endl;
-	  
-	
-	  if(!message->needed && cache.length() > 0){
-	
-	    cache.erase(0, message->length);
+	if(message->length > 0)
+	  cache.erase(0, message->value.length()+message->firstLine.length()+1);
+	else
+	  cache.erase(0, 1+message->firstLine.length());
 	    //cout << cache << endl;
-	    
-	    message->value.erase(message->length, message->value.length()-1);
-	    //cout << message->value << endl;
 
-	    storeMessage(message);
+	storeMessage(message);
 
-	    stringstream ss;
-	    ss << message->value.length();
-	    cout << "Stored a file called " + message->fileName
-	      + " with " + ss.str() + " bytes\n" << endl;
-		
-	    //std::cout << message->value << endl;
-	  }
-
-
+	stringstream ss;
+	ss << message->value.length();
+	cout << "Stored a file called " + message->fileName
+	  + " with " + ss.str() + " bytes" << endl;
+	
+	// std::cout << message->value << "\n" << endl;
 	  
-	
-	//	if(message->needed)
-	//  get_value(client,message);
-
-	
-
-	
-
-
-
+	  
     }
     close(client);
 }
 
-void Server::get_value(int client, Message* message) {
+string Server::get_value(int client, int messageLength, string cache) {
 
   // send_response(client, "\n");
-  int left = message->length - message->value.length();
-
+  int left = messageLength - cache.length();  
+  string cache2 = cache;
 
   while(left > 0) {
-    
-    send_response(client, "\n");
+    //cout << left << endl;
     int nread = recv(client,buf_,1024,0);
     
-      left -= nread;
+    left -= nread;
 
-      // stringstream ss;
-      // ss << left;
-      //  send_response(client, ss.str() + "\n");
+    // stringstream ss;
+    // ss << left;
+    //  send_response(client, ss.str() + "\n");
   
     if (nread < 0) {
       if (errno == EINTR)
@@ -140,15 +134,9 @@ void Server::get_value(int client, Message* message) {
       break;
     }
 
-    if(left < nread) {
-      message->value.append(buf_,nread);
-      break;
-    }
-    else if(left > nread) {
-      message->value.append(buf_,left);
-
-    }
+    cache2.append(buf_,nread);
   }
+  return cache2;
 }
     
 string
@@ -212,16 +200,24 @@ Message* Server::parse_request(string request) {
   Message *dummy = new Message();
   string text = "";
   if(containsNewline(request)) {
-    
+    //cout << "contains new line" << endl;
+
+
     vector<string> halves = half(request);
+
+    //cout << halves[0] << endl;
     
     vector<string> elements = split(halves[0], ' ');
     
+
     if(elements[0] == "store" && elements.size() == 3) {
       
+      //cout << "tyring to store " << elements[1] << endl;
       if(isNumber(elements[2])) {
 	
 	byteNum = atoi(elements[2].c_str());
+	//cout << "this has " << byteNum << " bytes" << endl;
+
 
 	if(byteNum > request.length()) {
 	  needed = true;
@@ -232,7 +228,7 @@ Message* Server::parse_request(string request) {
 	
 	Message *message = new Message(halves[0], elements[0], elements[1], byteNum,
 	  			       halves[1], needed);
-	std::cout << "message parsed successfuly" << endl;
+	
 	return message;
 
       }

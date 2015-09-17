@@ -103,7 +103,7 @@ protected:
     vector<string> half(string);
     vector<string> splitCache(string, int);
     Message* parse_request(string);
-    void get_value(int, Message*);
+    string get_value(int, int, string);
     
     int server_;
     int buflen_;
